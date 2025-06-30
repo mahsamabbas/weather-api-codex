@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Forecast</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 60px auto;
+            background: rgba(255,255,255,0.95);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+            padding: 36px 32px 40px 32px;
+            position: relative;
+        }
+        h1 {
+            text-align: center;
+            color: #2d2d2d;
+            font-size: 2.2em;
+            letter-spacing: 1px;
+            margin-bottom: 18px;
+        }
+        #location {
+            text-align: center;
+            margin-bottom: 18px;
+            font-size: 1.15em;
+            color: #5a5a5a;
+        }
+        #weather {
+            margin-top: 18px;
+        }
+        .hourly {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+        }
+        .hour {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            border-radius: 12px;
+            padding: 16px 12px;
+            min-width: 120px;
+            text-align: center;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            color: #333;
+            transition: transform 0.15s;
+        }
+        .hour:hover {
+            transform: translateY(-4px) scale(1.04);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.13);
+        }
+        .hour strong {
+            display: block;
+            margin-bottom: 7px;
+            font-size: 1.08em;
+            color: #2d2d2d;
+        }
+        .weather-icon {
+            font-size: 2em;
+            margin-bottom: 4px;
+            display: block;
+        }
+        @media (max-width: 700px) {
+            .container { padding: 18px 4vw 24px 4vw; }
+            .hourly { gap: 8px; }
+            .hour { min-width: 90px; padding: 10px 4px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Weekly Hourly Weather Forecast</h1>
+        <div id="location"></div>
+        <div id="weather"></div>
+    </div>
+    <script>
+        const locationDiv = document.getElementById('location');
+        const weatherDiv = document.getElementById('weather');
+
+        // Get location from IP and fetch weather
+        async function fetchLocationAndWeather() {
+            locationDiv.innerHTML = 'Detecting your location...';
+            try {
+                // Use ip-api.com for free IP geolocation
+                const res = await fetch('https://ip-api.io/json');
+                const data = await res.json();
+                if (data && data.city && data.latitude && data.longitude) {
+                    locationDiv.innerHTML = `Location: <strong>${data.city}, ${data.region_name}, ${data.country_name}</strong>`;
+                    fetchWeather(data.latitude, data.longitude, data.city);
+                } else {
+                    locationDiv.innerHTML = 'Could not detect your location.';
+                }
+            } catch (e) {
+                locationDiv.innerHTML = 'Error detecting your location.';
+            }
+        }
+
+        // Weather code to emoji mapping
+        function getWeatherIcon(code) {
+            // Open-Meteo weather codes: https://open-meteo.com/en/docs#api_form
+            if ([0].includes(code)) return '☀️'; // Clear
+            if ([1,2].includes(code)) return '🌤️'; // Mainly clear/partly cloudy
+            if ([3].includes(code)) return '☁️'; // Overcast
+            if ([45,48].includes(code)) return '🌫️'; // Fog
+            if ([51,53,55,56,57].includes(code)) return '🌦️'; // Drizzle
+            if ([61,63,65,66,67,80,81,82].includes(code)) return '🌧️'; // Rain
+            if ([71,73,75,77,85,86].includes(code)) return '❄️'; // Snow
+            if ([95,96,99].includes(code)) return '⛈️'; // Thunderstorm
+            return '❔';
+        }
+
+        // Fetch weather from Open-Meteo
+        async function fetchWeather(lat, lon, cityName) {
+            weatherDiv.innerHTML = 'Loading weather...';
+            // Open-Meteo API: hourly for next 7 days
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode&forecast_days=7&timezone=auto`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (!data.hourly) {
+                weatherDiv.innerHTML = 'No weather data found.';
+                return;
+            }
+            // Display hourly weather for 7 days
+            let html = `<h2 style="text-align:center;margin-bottom:18px;">Hourly Weather for ${cityName}</h2>`;
+            html += '<div class="hourly">';
+            for (let i = 0; i < data.hourly.time.length; i++) {
+                const time = data.hourly.time[i];
+                const temp = data.hourly.temperature_2m[i];
+                const code = data.hourly.weathercode[i];
+                const icon = getWeatherIcon(code);
+                html += `<div class="hour"><span class="weather-icon">${icon}</span><strong>${time.replace('T', '<br>')}</strong>${temp}&deg;C<br><span style='font-size:0.95em;color:#555;'>Code: ${code}</span></div>`;
+            }
+            html += '</div>';
+            weatherDiv.innerHTML = html;
+        }
+
+        // Initial load
+        fetchLocationAndWeather();
+    </script>
+</body>
+</html>
